@@ -18,13 +18,7 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-const PRESET_ACCOUNTS = [
-  { role: 'Administrator' as UserRole, email: 'admin@transitops.com', label: 'Admin (Full Access)' },
-  { role: 'Fleet Manager' as UserRole, email: 'manager@transitops.com', label: 'Fleet Manager' },
-  { role: 'Dispatcher' as UserRole, email: 'dispatcher@transitops.com', label: 'Dispatcher' },
-  { role: 'Safety Officer' as UserRole, email: 'safety@transitops.com', label: 'Safety Officer' },
-  { role: 'Financial Analyst' as UserRole, email: 'finance@transitops.com', label: 'Financial Analyst' },
-];
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -53,7 +47,7 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
-      password: 'password123',
+      password: '',
       rememberMe: false,
       role: 'Fleet Manager',
     },
@@ -108,11 +102,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleFillPreset = (email: string, role: UserRole) => {
-    setValue('email', email);
-    setValue('role', role);
-    setValue('password', 'password123');
-  };
+
 
 
   return (
@@ -293,30 +283,7 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          {/* Presets panel for testing */}
-          <div className="pt-6 border-t border-slate-800/60 space-y-3">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Demo Credentials (Role-based testing)
-            </p>
-            <div className="grid grid-cols-1 gap-2">
-              {PRESET_ACCOUNTS.map((preset) => (
-                <button
-                  key={preset.role}
-                  type="button"
-                  onClick={() => handleFillPreset(preset.email, preset.role)}
-                  className="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 hover:border-indigo-500 hover:bg-indigo-950/40 text-left transition-all text-xs"
-                >
-                  <div>
-                    <span className="font-semibold text-slate-200">{preset.label}</span>
-                    <span className="block text-[10px] text-slate-500">{preset.email}</span>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] font-medium text-slate-400 group-hover:bg-indigo-500/20">
-                    Auto-Fill
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
+
         </div>
       </div>
     </div>

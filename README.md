@@ -1,501 +1,203 @@
 # 🚛 TransitOps – Smart Transport Operations Platform
 
-> A modern enterprise-grade fleet and transport management system that helps logistics companies manage vehicles, drivers, trips, maintenance, fuel, expenses, and operational analytics from a centralized dashboard.
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-blue?style=flat-square&logo=react)](https://react.dev/)
+[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4.0-06B6D4?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
+[![Firebase](https://img.shields.io/badge/Firebase-Auth-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+
+> A modern enterprise-grade fleet and transport management system designed to streamline logistics operations. Manage vehicles, drivers, trips, maintenance logs, fuel logs, and expenses, and view interactive operational analytics from a centralized dashboard.
 
 ---
 
 ## 📖 Overview
 
-TransitOps is an intelligent transport operations platform designed to replace manual spreadsheets and logbooks with a secure, scalable, and data-driven solution.
+TransitOps is an intelligent transport operations platform designed to replace manual spreadsheets and siloed systems with a secure, highly scalable, and data-driven solution.
 
-The platform enables organizations to efficiently manage the complete lifecycle of fleet operations while ensuring compliance, reducing operational costs, and improving fleet utilization.
+The platform enables organizations to efficiently manage the complete lifecycle of fleet operations, ensuring safety compliance, reducing operational costs, and optimizing resource utilization through live analytics and tracking.
+
+---
+
+## ⚡ Key Highlights
+
+### 🔄 Dual-Mode Database Architecture (Offline-First Fallback)
+TransitOps features a custom, transparent data-routing layer. 
+* **Online Mode:** When connected to **Supabase**, the application performs live queries on PostgreSQL with Row-Level Security (RLS) policies.
+* **Offline-First Demo Mode:** If Supabase credentials are not supplied in `.env.local`, the application seamlessly falls back to a mock local database powered by `localStorage`. It comes pre-seeded with rich, realistic enterprise mock data (vehicles, drivers, logs, trips), allowing you to run, explore, and demo the entire application instantly without database setup.
+
+### 🔐 Multi-Provider Authentication & RBAC
+Supports secure Email Authentication and Google Sign-in integrated through **Firebase Authentication**. Access is restricted dynamically across different parts of the application using a robust **Role-Based Access Control (RBAC)** system.
+
+### 🗺️ Fleet Tracking & Analytics
+Features interactive maps powered by **Google Maps API** for asset tracking and spatial management, and visualizations powered by **Recharts** representing key metrics like vehicle ROI, maintenance costs, and fuel efficiency.
 
 ---
 
 ## ✨ Features
 
-### 🔐 Authentication & Security
+### 📊 Dashboard & Operational KPIs
+Real-time operational insights showing:
+* **Fleet Health:** Active, Available, In-Shop (Maintenance), and Retired vehicles.
+* **Trip Funnel:** Pending (Draft), Dispatched (On Trip), Completed, and Cancelled.
+* **Utilization & Financials:** Drivers on duty, fleet utilization percentages, total fuel costs, maintenance expenditure, revenue, profit, and overall vehicle ROI.
+* **Rich Analytics:** Monthly charts tracking profit margins, operational expense category breakdowns (tolls, taxes, parking, etc.), and fuel efficiency trends.
 
-- Secure Email Authentication
-- JWT Session Management
-- Role-Based Access Control (RBAC)
-- Protected Routes
-- Password Reset
-- User Profile Management
+### 🚚 Vehicle Management
+Complete lifecycle control over the transport assets:
+* Add, edit, retire, and search vehicles.
+* Detailed metadata: registration number, model, type, acquisition cost, maximum capacity, odometer tracking, and insurance validity status.
+* Embedded sub-modules showing a vehicle's specific maintenance logs, fuel logs, and historical trips.
 
----
+### 👨‍✈️ Driver Management
+Comprehensive driver tracking and safety auditing:
+* Manage driver profiles, contact details, and license verification.
+* Track driver status: *Available*, *On Trip*, *Off Duty*, or *Suspended*.
+* Dynamic **Safety Score** to encourage driver compliance.
+* Seamless vehicle assignment.
 
-### 📊 Dashboard
+### 🛣️ Trip Management
+Plan and monitor logistics dispatch operations:
+* Create trips with custom source, destination, cargo weight, planned distance, and estimated duration.
+* Validated dispatcher workflow: ensures vehicles and drivers are available (not already on trip, not suspended/under maintenance).
+* Dispatches automatically update resource statuses, and completing/cancelling trips returns assets back to the available pool.
 
-Real-time operational insights including:
+### 🔧 Maintenance & Service Logs
+Keep your fleet healthy and operational:
+* Schedule maintenance tasks and record details of repairs, workshops, and actual vs. estimated costs.
+* Tracks vehicle status dynamically—scheduling maintenance automatically marks a vehicle as **In Shop**.
 
-- Active Vehicles
-- Available Vehicles
-- Vehicles in Maintenance
-- Retired Vehicles
-- Active Trips
-- Pending Trips
-- Completed Trips
-- Drivers On Duty
-- Fleet Utilization
-- Fuel Consumption
-- Maintenance Costs
-- Revenue
-- Profit
-- Vehicle ROI
+### ⛽ Fuel Tracking
+Monitor efficiency and prevent fuel waste:
+* Track every refuel event with odometer reading, fuel quantity, station info, and cost.
+* Auto-calculation of average mileage (km/l) and cost per kilometer.
 
-Interactive charts include:
-
-- Line Charts
-- Pie Charts
-- Bar Charts
-- Area Charts
-- Monthly Reports
-- Fleet Analytics
-- Expense Analytics
-
----
-
-## 🚚 Vehicle Management
-
-Manage the complete vehicle lifecycle.
-
-### Features
-
-- Add Vehicle
-- Edit Vehicle
-- Delete Vehicle
-- Vehicle Details
-- Vehicle Documents
-- Maintenance History
-- Fuel History
-- Trip History
-
-### Vehicle Information
-
-- Registration Number
-- Vehicle Name
-- Model
-- Vehicle Type
-- Maximum Load Capacity
-- Odometer
-- Acquisition Cost
-- Insurance
-- Status
-
-### Vehicle Status
-
-- Available
-- On Trip
-- In Shop
-- Retired
+### 💰 Expense Tracking
+Manage corporate overheads with custom category filters:
+* Tracks costs across categories like Fuel, Maintenance, Insurance, Repairs, Tolls, Taxes, and Parking.
 
 ---
 
-## 👨‍✈️ Driver Management
+## 👥 User Roles (RBAC)
 
-Complete driver management system.
-
-### Features
-
-- Driver Registration
-- Driver Profile
-- License Management
-- Safety Score
-- Driver Assignment
-
-### Driver Information
-
-- Name
-- License Number
-- License Category
-- License Expiry
-- Contact Number
-- Email
-- Safety Score
-- Assigned Vehicle
-- Status
-
-### Driver Status
-
-- Available
-- On Trip
-- Off Duty
-- Suspended
+* **Administrator:** Full system access, manage employees, configure roles, and view comprehensive audit logs.
+* **Fleet Manager:** Add/edit vehicles, plan and schedule maintenance logs, and manage general fleet operations.
+* **Dispatcher:** Create trips, assign available drivers and vehicles, and manage dispatch/completion states.
+* **Safety Officer:** Inspect compliance records, monitor license validity, and maintain driver safety scores.
+* **Financial Analyst:** View financial dashboards, export reports, and analyze expense categories to maximize ROI.
 
 ---
 
-## 🛣 Trip Management
+## 🛠️ Technology Stack
 
-Plan and monitor transport operations.
-
-### Features
-
-- Create Trip
-- Dispatch Trip
-- Cancel Trip
-- Complete Trip
-- Route Tracking
-- Live Status
-
-### Trip Information
-
-- Source
-- Destination
-- Driver
-- Vehicle
-- Cargo Weight
-- Planned Distance
-- Estimated Duration
-
-### Trip Status
-
-- Draft
-- Dispatched
-- Completed
-- Cancelled
+* **Frontend:** React 19, Next.js 16 (App Router), TypeScript, Framer Motion (for smooth micro-animations), Lucide Icons
+* **Styling:** Tailwind CSS v4, Shadcn UI
+* **State Management:** Zustand
+* **Database & Auth:** Supabase (PostgreSQL), Firebase Authentication (Email/Google Providers)
+* **Visualizations & Maps:** Recharts, Google Maps API (`@react-google-maps/api`)
 
 ---
 
-## 🔧 Maintenance Management
-
-Manage vehicle servicing and maintenance.
-
-### Features
-
-- Schedule Maintenance
-- Service Records
-- Workshop Details
-- Cost Tracking
-- Maintenance History
-
-### Status
-
-- Scheduled
-- In Progress
-- Completed
-
----
-
-## ⛽ Fuel Management
-
-Track fuel usage and vehicle efficiency.
-
-### Features
-
-- Fuel Logs
-- Mileage Tracking
-- Fuel Cost
-- Fuel Station Records
-- Fuel Efficiency Reports
-
-Automatic calculations:
-
-- Average Mileage
-- Cost per Kilometer
-- Fuel Efficiency
-
----
-
-## 💰 Expense Management
-
-Track operational expenses.
-
-Supported Expense Types
-
-- Fuel
-- Maintenance
-- Insurance
-- Repairs
-- Parking
-- Toll
-- Taxes
-
-Generate:
-
-- Monthly Reports
-- Annual Reports
-- Department Reports
-
----
-
-## 📈 Reports & Analytics
-
-Generate professional reports.
-
-Reports
-
-- Vehicle Report
-- Driver Report
-- Trip Report
-- Maintenance Report
-- Fuel Report
-- Expense Report
-- Profit Report
-
-Export formats
-
-- PDF
-- CSV
-- Excel
-
----
-
-## 🔔 Notification System
-
-Receive alerts for:
-
-- License Expiry
-- Insurance Expiry
-- Maintenance Due
-- Trip Delays
-- Vehicle Breakdown
-- Fuel Alerts
-
-Supports:
-
-- Email Notifications
-- Push Notifications
-
----
-
-## 🔍 Search & Filters
-
-Powerful global search with filters.
-
-Search by
-
-- Vehicle
-- Driver
-- Trip
-- Region
-- Status
-- Date
-
-Includes
-
-- Pagination
-- Sorting
-- Advanced Filters
-
----
-
-# 👥 User Roles
-
-## Administrator
-
-- Full System Access
-- Manage Users
-- Configure Roles
-- View Reports
-
-## Fleet Manager
-
-- Manage Fleet
-- Vehicles
-- Trips
-- Maintenance
-
-## Dispatcher
-
-- Assign Drivers
-- Assign Vehicles
-- Monitor Trips
-
-## Safety Officer
-
-- Monitor Driver Compliance
-- License Expiry
-- Safety Scores
-
-## Financial Analyst
-
-- Expense Reports
-- Revenue
-- Profitability
-- Operational Costs
-
----
-
-# 📌 Business Rules
-
-The application enforces the following rules:
-
-- Vehicle Registration Number must be unique.
-- Retired vehicles cannot be dispatched.
-- Vehicles under maintenance cannot be assigned.
-- Drivers with expired licenses cannot be assigned.
-- Suspended drivers cannot be assigned.
-- A vehicle already on a trip cannot be assigned again.
-- A driver already on a trip cannot be assigned again.
-- Cargo weight must not exceed vehicle capacity.
-- Dispatch automatically changes vehicle and driver status to **On Trip**.
-- Completing a trip automatically restores both to **Available**.
-- Cancelling a trip restores resources to **Available**.
-- Maintenance automatically changes vehicle status to **In Shop**.
-- Closing maintenance restores vehicle availability unless retired.
-- Fuel efficiency, operational costs, fleet utilization, and ROI are automatically calculated.
-
----
-
-# 🗄 Database Schema
-
-Core Tables
-
-- Users
-- Roles
-- Vehicles
-- Drivers
-- Trips
-- MaintenanceLogs
-- FuelLogs
-- Expenses
-- Documents
-- Notifications
-- AuditLogs
-
----
-
-# 🛠 Technology Stack
-
-### Frontend
-
-- React
-- Next.js
-- TypeScript
-- Tailwind CSS
-- Shadcn UI
-- Framer Motion
-
-### Backend
-
-- Next.js API Routes
-- Supabase
-- PostgreSQL
-
-### Authentication
-
-- JWT
-- RBAC
-- Row Level Security
-
-### Charts
-
-- Recharts
-
-### Maps
-
-- Google Maps
-- Leaflet
-
-### State Management
-
-- Zustand
-- React Query
-
----
-
-# 📱 Responsive Design
-
-Supports
-
-- Desktop
-- Laptop
-- Tablet
-- Mobile
-
----
-
-# 🌙 Additional Features
-
-- Dark Mode
-- Glassmorphism UI
-- Smooth Animations
-- Toast Notifications
-- Skeleton Loading
-- Activity Logs
-- Vehicle Document Management
-- AI Route Optimization (Future)
-- Predictive Maintenance (Future)
-- GPS Tracking (Future)
-- PWA Support
-
----
-
-# 📂 Project Structure
+## 📂 Project Structure
 
 ```
 TransitOps/
 │
-├── app/
-├── components/
-├── hooks/
-├── lib/
-├── services/
-├── store/
-├── types/
-├── utils/
-├── public/
-├── database/
-├── middleware/
-├── styles/
-├── docs/
-├── README.md
-└── package.json
+├── src/
+│   ├── app/                      # Next.js App Router Pages
+│   │   ├── (dashboard)/          # Dashboard Shell & Sub-views (trips, drivers, vehicles, etc.)
+│   │   ├── api/                  # API endpoints
+│   │   ├── login/                # Authentication Sign-In
+│   │   ├── signup/               # Registration Page
+│   │   ├── globals.css           # Tailwind v4 Global Imports
+│   │   └── layout.tsx            # App-wide context wrappers
+│   │
+│   ├── components/               # Shared & Layout UI Components
+│   │   ├── auth/                 # Protected route checks and authentication prompts
+│   │   ├── layout/               # Header, Sidebar, and App Shell
+│   │   └── reports/              # Exportable reports modal
+│   │
+│   └── lib/                      # Business Logic & Infrastructure
+│       ├── db/                   # Supabase connection & Dual-Mode helper (index.ts)
+│       ├── firebase/             # Firebase Authentication client (index.ts)
+│       └── store/                # Zustand State Store (transitStore.ts)
+│
+├── supabase/                     # PostgreSQL Schemas & Migration Files
+│   ├── schema.sql                # Core table schemas (users, vehicles, drivers, trips, logs)
+│   ├── multitenancy_schema.sql   # Organization tenancy structures
+│   ├── approval_schema.sql       # User registration approval workflow rules
+│   ├── telemetry_schema.sql      # Fleet telemetry and GPS status tables
+│   ├── fix_rls.sql               # Row-Level Security policy corrections
+│   └── final_setup.sql           # Aggregated build and seed scripts
+│
+├── public/                       # Static Assets & Icons
+├── .env.example                  # Environment Configuration template
+└── package.json                  # Dependencies & Development Scripts
 ```
 
 ---
 
-# 🚀 Getting Started
+## 🚀 Getting Started
 
-## Install Dependencies
-
+### 1. Clone the Repository & Install Dependencies
 ```bash
+git clone https://github.com/Dhruvgupta1015/Transient-ops-.git
+cd Transient-ops-
 npm install
 ```
 
-## Configure Environment
-
-Create a `.env.local` file.
+### 2. Configure Environment Variables
+Create a `.env.local` file in the root directory and specify the following keys:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-JWT_SECRET=
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+
+# Firebase Authentication Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=your-firebase-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-firebase-auth-domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-firebase-project-id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-firebase-storage-bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-firebase-messaging-sender-id
+NEXT_PUBLIC_FIREBASE_APP_ID=your-firebase-app-id
+
+# Google Maps (Required for live location maps)
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 ```
 
-## Start Development Server
+*Note: If `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are left blank or omitted, the project will automatically fall back to **localStorage Demo Mode** containing pre-seeded enterprise fleet datasets.*
 
+### 3. Setup Database (Optional - For Supabase Mode)
+To configure your Supabase Postgres database:
+1. Log in to the [Supabase Dashboard](https://supabase.com).
+2. Go to the **SQL Editor** on your project.
+3. Copy and run the SQL migration scripts located in the `supabase/` directory in the following order:
+   1. [schema.sql](file:///c:/Users/bipin/Downloads/TransitOps/supabase/schema.sql) (Initial structures)
+   2. [multitenancy_schema.sql](file:///c:/Users/bipin/Downloads/TransitOps/supabase/multitenancy_schema.sql) (Organizations schema)
+   3. [approval_schema.sql](file:///c:/Users/bipin/Downloads/TransitOps/supabase/approval_schema.sql) (Approval constraints)
+   4. [telemetry_schema.sql](file:///c:/Users/bipin/Downloads/TransitOps/supabase/telemetry_schema.sql) (Location data)
+   5. [fix_rls.sql](file:///c:/Users/bipin/Downloads/TransitOps/supabase/fix_rls.sql) (Security policies)
+   6. Alternatively, execute [final_setup.sql](file:///c:/Users/bipin/Downloads/TransitOps/supabase/final_setup.sql) which aggregates the core schemas.
+
+### 4. Run Development Server
 ```bash
 npm run dev
 ```
+Open [http://localhost:3000](http://localhost:3000) in your browser to view the application.
 
 ---
 
-# 📊 Future Enhancements
-
-- AI Route Optimization
-- Predictive Maintenance
-- Live GPS Tracking
-- Driver Behavior Analysis
-- Geofencing
-- QR Code Vehicle Check-In
-- Mobile App
-- Offline Mode
-- Multi-language Support
-- SMS Notifications
+## 📈 Roadmap & Future Scope
+* **AI Route Optimization:** Implementing AI-based route suggestion algorithms to minimize fuel expenditure.
+* **Predictive Maintenance:** Analyzing maintenance history and odometer metrics to trigger proactive workshop schedules.
+* **Geofencing & Alerts:** Automate trip notifications when vehicles deviate from predefined routes.
+* **Offline Synchronization:** Sync locally-saved changes back to Supabase automatically when internet connection is restored.
+* **Mobile Companion App:** Tailored React Native app for drivers to upload checklists and update trip progress in real-time.
 
 ---
 
-# 📄 License
+## 📄 License
 
-This project is developed for educational purposes and hackathon participation. You may modify and extend it for personal or commercial use in accordance with your chosen license.
-
----
-
-# 👨‍💻 Developed By
-
-**TransitOps Team**
-
-Enterprise Smart Transport Operations Platform
+Developed for enterprise fleet operations demoing and hackathon participation. Feel free to extend and modify the codebase.

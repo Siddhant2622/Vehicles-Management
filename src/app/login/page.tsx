@@ -96,6 +96,12 @@ export default function LoginPage() {
         router.push('/dashboard');
       }
     } catch (err: any) {
+      if (err?.message === 'ACCOUNT_NOT_FOUND') {
+        // Redirect to signup with the Google email pre-filled
+        const googleEmail = err.googleEmail || '';
+        router.push(`/signup?email=${encodeURIComponent(googleEmail)}`);
+        return;
+      }
       setError(err?.message || 'Google Authentication failed.');
     } finally {
       setLoading(false);
@@ -281,9 +287,9 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center text-xs text-slate-400">
-            Don't have clearance?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/signup" className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors">
-              Request access clearance
+              Sign Up
             </Link>
           </p>
 

@@ -1251,27 +1251,22 @@ export const useTransitStore = create<TransitState>()(
 
           let user = get().users.find((u) => u.email.toLowerCase() === email.toLowerCase().trim());
           if (!user) {
-            user = {
-              id: generateUUID(),
-              email: email.toLowerCase().trim(),
-              fullName: email.split('@')[0].toUpperCase(),
-              role: role,
-              approvalStatus: 'Pending Approval',
-              firstName: email.split('@')[0],
-              lastName: '',
-            };
-            set((state) => ({ users: [...state.users, user!] }));
+            // Also check Supabase in case the user exists in the DB but not yet synced locally
             if (isSupabaseConfigured && supabase) {
-              await supabase.from('users').insert(mapUserToDB(user));
+              const { data: dbUser } = await supabase.from('users').select('*').eq('email', email.toLowerCase().trim()).single();
+              if (dbUser) {
+                user = mapUserFromDB(dbUser);
+                set((state) => ({ users: [...state.users, user!] }));
+              }
             }
-          } else if (role && user.role !== role) {
-            user.role = role;
-            set((state) => ({
-              users: state.users.map((u) => u.id === user!.id ? { ...u, role } : u)
-            }));
-            if (isSupabaseConfigured && supabase) {
-              await supabase.from('users').update({ role }).eq('id', user.id);
-            }
+          }
+
+          if (!user) {
+            set({ authLoading: false });
+            // Throw a special error so the login page can redirect to signup
+            const err = new Error('ACCOUNT_NOT_FOUND');
+            (err as any).googleEmail = email;
+            throw err;
           }
 
           if (user.approvalStatus === 'Pending Approval') {

@@ -143,7 +143,7 @@ function SignupForm() {
       companySize: '10-50',
       firstName: '',
       lastName: '',
-      email: '',
+      email: (!isResubmitting && resubmitEmail) ? resubmitEmail : '',
       phoneNumber: '',
       profilePhoto: '',
       password: '',

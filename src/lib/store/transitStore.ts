@@ -1762,8 +1762,22 @@ export const useTransitStore = create<TransitState>()(
             supabase.from('audit_logs').select('*').order('timestamp', { ascending: false })
           ]);
 
+          const fetchedUsers = dbUsers ? dbUsers.map(mapUserFromDB) : [];
+          const currentLoggedUser = get().currentUser;
+          let updatedCurrentUser = currentLoggedUser;
+          
+          if (currentLoggedUser) {
+            const matched = fetchedUsers.find(
+              (u) => u.email.toLowerCase() === currentLoggedUser.email.toLowerCase()
+            );
+            if (matched) {
+              updatedCurrentUser = matched;
+            }
+          }
+
           set({
-            users: dbUsers ? dbUsers.map(mapUserFromDB) : [],
+            users: fetchedUsers,
+            currentUser: updatedCurrentUser,
             vehicles: dbVehicles ? dbVehicles.map(mapVehicleFromDB) : [],
             drivers: dbDrivers ? dbDrivers.map(mapDriverFromDB) : [],
             trips: dbTrips ? dbTrips.map(mapTripFromDB) : [],

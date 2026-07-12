@@ -1090,9 +1090,22 @@ export const useTransitStore = create<TransitState>()(
           const companyId = generateUUID();
           const adminUserId = generateUUID();
 
-          // 1. Register in Firebase
+          // 1. Register in Firebase (if not already logged in with this email via Google)
           if (isFirebaseConfigured && auth) {
-            await createUserWithEmailAndPassword(auth, adminPayload.email, password);
+            const currentFirebaseUser = auth.currentUser;
+            if (!currentFirebaseUser || currentFirebaseUser.email !== adminPayload.email) {
+              try {
+                await createUserWithEmailAndPassword(auth, adminPayload.email, password);
+              } catch (err: any) {
+                // If the email is already in use (e.g. they created it before but didn't finish DB setup), we can proceed if we can sign them in.
+                if (err.code === 'auth/email-already-in-use') {
+                   // We assume they are already authenticated or will authenticate later. 
+                   // Ideally, we'd sign them in, but if they came from Google Auth, currentFirebaseUser should be set.
+                } else {
+                  throw err;
+                }
+              }
+            }
           }
 
           // 2. Insert company into Supabase

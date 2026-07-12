@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase, isSupabaseConfigured } from '@/lib/db';
+import { 
+  auth, 
+  googleProvider, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signInWithPopup, 
+  signOut,
+  isFirebaseConfigured
+} from '@/lib/firebase';
 
 // --- TYPE DEFINITIONS ---
 
@@ -798,6 +807,20 @@ async function supabaseSync(table: string, action: 'insert' | 'update' | 'delete
   }
 }
 
+function generateUUID(): string {
+  if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
+    try {
+      return window.crypto.randomUUID();
+    } catch (_) {}
+  }
+  // RFC4122 version 4 compliant fallback UUID generator for non-secure contexts (HTTP on LAN IP)
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 // --- INTERACTION STORE INTERFACE ---
 
 interface TransitState {
@@ -813,11 +836,16 @@ interface TransitState {
   notifications: Notification[];
   auditLogs: AuditLog[];
   rememberMe: boolean;
+  authLoading: boolean;
 
   // Authentication Actions
-  login: (email: string, role?: UserRole) => boolean;
-  logout: () => void;
+  login: (email: string, role?: UserRole) => boolean; // Keep for fallback compatibility
+  loginWithEmail: (email: string, role: UserRole, password?: string) => Promise<boolean>;
+  loginWithGoogle: (role: UserRole) => Promise<boolean>;
+  logout: () => Promise<void>;
   setRememberMe: (val: boolean) => void;
+  setCurrentUser: (user: User | null) => void;
+  setAuthLoading: (val: boolean) => void;
 
   // Vehicles Actions
   addVehicle: (vehicle: Omit<Vehicle, 'id'>) => { success: boolean; message: string };
@@ -882,8 +910,11 @@ export const useTransitStore = create<TransitState>()(
       notifications: seedNotifications,
       auditLogs: seedAuditLogs,
       rememberMe: false,
+      authLoading: false,
 
       setRememberMe: (val) => set({ rememberMe: val }),
+      setCurrentUser: (user) => set({ currentUser: user }),
+      setAuthLoading: (val) => set({ authLoading: val }),
 
       login: (email, selectedRole) => {
         const emailLower = email.toLowerCase().trim();
@@ -896,7 +927,7 @@ export const useTransitStore = create<TransitState>()(
         }
         // If not found in seed, create a default user dynamically for convenience
         const newUser: User = {
-          id: `usr-${Date.now()}`,
+          id: generateUUID(),
           email: emailLower,
           fullName: emailLower.split('@')[0].toUpperCase(),
           role: selectedRole || 'Fleet Manager',
@@ -909,8 +940,116 @@ export const useTransitStore = create<TransitState>()(
         return true;
       },
 
-      logout: () => {
+      loginWithEmail: async (email, role, password = 'password123') => {
+        set({ authLoading: true });
+        try {
+          if (isFirebaseConfigured && auth) {
+            try {
+              await signInWithEmailAndPassword(auth, email, password);
+            } catch (err: any) {
+              if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/cannot-find-user') {
+                await createUserWithEmailAndPassword(auth, email, password);
+              } else {
+                throw err;
+              }
+            }
+          }
+
+          let user = get().users.find((u) => u.email.toLowerCase() === email.toLowerCase().trim());
+          if (!user) {
+            user = {
+              id: generateUUID(),
+              email: email.toLowerCase().trim(),
+              fullName: email.split('@')[0].toUpperCase(),
+              role: role
+            };
+            set((state) => ({ users: [...state.users, user!] }));
+            if (isSupabaseConfigured && supabase) {
+              await supabase.from('users').insert({
+                id: user.id,
+                email: user.email,
+                full_name: user.fullName,
+                role: user.role
+              });
+            }
+          } else if (role && user.role !== role) {
+            user.role = role;
+            set((state) => ({
+              users: state.users.map((u) => u.id === user!.id ? { ...u, role } : u)
+            }));
+            if (isSupabaseConfigured && supabase) {
+              await supabase.from('users').update({ role }).eq('id', user.id);
+            }
+          }
+
+          set({ currentUser: user, authLoading: false });
+          get().logAction('User Login', `User ${user.email} logged in with role ${user.role} (Firebase/Email)`);
+          return true;
+        } catch (err) {
+          console.error('Login error:', err);
+          set({ authLoading: false });
+          throw err;
+        }
+      },
+
+      loginWithGoogle: async (role) => {
+        set({ authLoading: true });
+        try {
+          let email = '';
+          if (isFirebaseConfigured && auth) {
+            const result = await signInWithPopup(auth, googleProvider);
+            email = result.user.email || '';
+          } else {
+            email = 'google-user@transitops.com';
+          }
+
+          if (!email) {
+            set({ authLoading: false });
+            return false;
+          }
+
+          let user = get().users.find((u) => u.email.toLowerCase() === email.toLowerCase().trim());
+          if (!user) {
+            user = {
+              id: generateUUID(),
+              email: email.toLowerCase().trim(),
+              fullName: email.split('@')[0].toUpperCase(),
+              role: role
+            };
+            set((state) => ({ users: [...state.users, user!] }));
+            if (isSupabaseConfigured && supabase) {
+              await supabase.from('users').insert({
+                id: user.id,
+                email: user.email,
+                full_name: user.fullName,
+                role: user.role
+              });
+            }
+          } else if (role && user.role !== role) {
+            user.role = role;
+            set((state) => ({
+              users: state.users.map((u) => u.id === user!.id ? { ...u, role } : u)
+            }));
+            if (isSupabaseConfigured && supabase) {
+              await supabase.from('users').update({ role }).eq('id', user.id);
+            }
+          }
+
+          set({ currentUser: user, authLoading: false });
+          get().logAction('User Login', `User ${user.email} logged in with role ${user.role} (Firebase/Google)`);
+          return true;
+        } catch (err) {
+          console.error('Google Login error:', err);
+          set({ authLoading: false });
+          throw err;
+        }
+      },
+
+      logout: async () => {
         const user = get().currentUser;
+        if (isFirebaseConfigured && auth) {
+          await signOut(auth);
+        }
         if (user) {
           get().logAction('User Logout', `User ${user.email} logged out`);
         }
@@ -926,7 +1065,7 @@ export const useTransitStore = create<TransitState>()(
           return { success: false, message: `Vehicle Registration Number ${vehicle.registrationNumber} must be unique.` };
         }
 
-        const newId = crypto.randomUUID();
+        const newId = generateUUID();
         const newVeh: Vehicle = {
           ...vehicle,
           id: newId,
@@ -1013,7 +1152,7 @@ export const useTransitStore = create<TransitState>()(
           return { success: false, message: `Driver with email ${driver.email} already exists.` };
         }
 
-        const newId = crypto.randomUUID();
+        const newId = generateUUID();
         const newDrv: Driver = {
           ...driver,
           id: newId,
@@ -1082,7 +1221,7 @@ export const useTransitStore = create<TransitState>()(
           }
         }
 
-        const newId = crypto.randomUUID();
+        const newId = generateUUID();
         const newTrip: Trip = {
           ...trip,
           id: newId,
@@ -1296,7 +1435,7 @@ export const useTransitStore = create<TransitState>()(
 
       // Maintenance Logs
       addMaintenanceLog: (log) => {
-        const newId = crypto.randomUUID();
+        const newId = generateUUID();
         const newLog: MaintenanceLog = {
           ...log,
           id: newId,
@@ -1384,7 +1523,7 @@ export const useTransitStore = create<TransitState>()(
 
       // Fuel Logs
       addFuelLog: (log) => {
-        const newId = crypto.randomUUID();
+        const newId = generateUUID();
         const newLog: FuelLog = {
           ...log,
           id: newId,
@@ -1428,7 +1567,7 @@ export const useTransitStore = create<TransitState>()(
 
       // Expenses
       addExpense: (expense) => {
-        const newId = crypto.randomUUID();
+        const newId = generateUUID();
         const newExpense: Expense = {
           ...expense,
           id: newId,
@@ -1445,7 +1584,7 @@ export const useTransitStore = create<TransitState>()(
 
       // Documents
       addDocument: (doc) => {
-        const newId = crypto.randomUUID();
+        const newId = generateUUID();
         const newDoc: Document = {
           ...doc,
           id: newId,
@@ -1499,7 +1638,7 @@ export const useTransitStore = create<TransitState>()(
 
       // Notifications
       addNotification: (type, message) => {
-        const newId = crypto.randomUUID();
+        const newId = generateUUID();
         const newNotif: Notification = {
           id: newId,
           type,
@@ -1539,7 +1678,7 @@ export const useTransitStore = create<TransitState>()(
       },
 
       logAction: (action, entity) => {
-        const newId = crypto.randomUUID();
+        const newId = generateUUID();
         const newLog: AuditLog = {
           id: newId,
           userEmail: get().currentUser?.email || 'system@transitops.com',

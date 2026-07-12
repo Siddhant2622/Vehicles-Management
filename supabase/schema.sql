@@ -151,6 +151,23 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 11. Vehicle Location Events (Telematics & GPS)
+CREATE TABLE IF NOT EXISTS public.vehicle_location_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    vehicle_id UUID NOT NULL REFERENCES public.vehicles(id) ON DELETE CASCADE,
+    driver_id UUID REFERENCES public.drivers(id) ON DELETE SET NULL,
+    latitude NUMERIC NOT NULL,
+    longitude NUMERIC NOT NULL,
+    speed NUMERIC, -- in km/h
+    heading NUMERIC, -- in degrees
+    ignition_status BOOLEAN,
+    source TEXT NOT NULL CHECK (source IN ('telematics', 'mobile_app')),
+    recorded_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_location_vehicle_time ON public.vehicle_location_events(vehicle_id, recorded_at DESC);
+
 -- Row Level Security (RLS) Configuration
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vehicles ENABLE ROW LEVEL SECURITY;
@@ -162,6 +179,7 @@ ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vehicle_location_events ENABLE ROW LEVEL SECURITY;
 
 -- Select/Read Policies (Access granted to authenticated users)
 CREATE POLICY "Allow read for authenticated users" ON public.users FOR SELECT USING (true);
@@ -174,6 +192,7 @@ CREATE POLICY "Allow read for authenticated users" ON public.expenses FOR SELECT
 CREATE POLICY "Allow read for authenticated users" ON public.documents FOR SELECT USING (true);
 CREATE POLICY "Allow read for authenticated users" ON public.notifications FOR SELECT USING (true);
 CREATE POLICY "Allow read for authenticated users" ON public.audit_logs FOR SELECT USING (true);
+CREATE POLICY "Allow read for authenticated users" ON public.vehicle_location_events FOR SELECT USING (true);
 
 -- Insert/Update/Delete Policies (Role-based rules implemented inside backend app router, 
 -- but here we configure standard authenticated write rights for database connection)
@@ -187,3 +206,4 @@ CREATE POLICY "Allow write for authenticated users" ON public.expenses FOR ALL U
 CREATE POLICY "Allow write for authenticated users" ON public.documents FOR ALL USING (true);
 CREATE POLICY "Allow write for authenticated users" ON public.notifications FOR ALL USING (true);
 CREATE POLICY "Allow write for authenticated users" ON public.audit_logs FOR ALL USING (true);
+CREATE POLICY "Allow write for authenticated users" ON public.vehicle_location_events FOR ALL USING (true);

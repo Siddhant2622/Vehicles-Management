@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase, isSupabaseConfigured } from '@/lib/db';
 
 // --- TYPE DEFINITIONS ---
 
@@ -165,6 +166,7 @@ const seedVehicles: Vehicle[] = [
     pollutionCert: '2026-09-15',
     imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=400',
     status: 'Available',
+    gpsLocation: { lat: 40.7128, lng: -74.0060 }, // NYC
   },
   {
     id: 'veh-2',
@@ -180,6 +182,7 @@ const seedVehicles: Vehicle[] = [
     pollutionCert: '2026-10-01',
     imageUrl: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&q=80&w=400',
     status: 'On Trip',
+    gpsLocation: { lat: 34.0522, lng: -118.2437 }, // LA
   },
   {
     id: 'veh-3',
@@ -195,6 +198,7 @@ const seedVehicles: Vehicle[] = [
     pollutionCert: '2026-05-10', // Expired
     imageUrl: 'https://images.unsplash.com/photo-1592838064575-70ed626d3a44?auto=format&fit=crop&q=80&w=400',
     status: 'In Shop',
+    gpsLocation: { lat: 41.8781, lng: -87.6298 }, // Chicago
   },
   {
     id: 'veh-4',
@@ -210,6 +214,7 @@ const seedVehicles: Vehicle[] = [
     pollutionCert: '2026-12-30',
     imageUrl: 'https://images.unsplash.com/photo-1516576880881-148f90b8e737?auto=format&fit=crop&q=80&w=400',
     status: 'Available',
+    gpsLocation: { lat: 29.7604, lng: -95.3698 }, // Houston
   },
   {
     id: 'veh-5',
@@ -225,6 +230,7 @@ const seedVehicles: Vehicle[] = [
     pollutionCert: '2026-11-15',
     imageUrl: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=400',
     status: 'Available',
+    gpsLocation: { lat: 39.9526, lng: -75.1652 }, // Philly
   },
   {
     id: 'veh-6',
@@ -240,6 +246,7 @@ const seedVehicles: Vehicle[] = [
     pollutionCert: '2025-12-15', // Expired
     imageUrl: 'https://images.unsplash.com/photo-1501700490588-4337a4e65488?auto=format&fit=crop&q=80&w=400',
     status: 'Retired',
+    gpsLocation: { lat: 33.4484, lng: -112.0740 }, // Phoenix
   },
 ];
 
@@ -524,6 +531,273 @@ const seedAuditLogs: AuditLog[] = [
   },
 ];
 
+// --- DATABASE FIELD MAPPINGS ---
+function mapVehicleToDB(v: any) {
+  return {
+    id: v.id,
+    registration_number: v.registrationNumber,
+    name: v.name,
+    model: v.model,
+    type: v.type,
+    max_load: v.maxLoad,
+    current_odometer: v.currentOdometer,
+    purchase_date: v.purchaseDate,
+    acquisition_cost: v.acquisitionCost,
+    insurance_expiry: v.insuranceExpiry,
+    pollution_cert: v.pollutionCert,
+    image_url: v.imageUrl,
+    status: v.status,
+  };
+}
+
+function mapVehicleFromDB(v: any): Vehicle {
+  return {
+    id: v.id,
+    registrationNumber: v.registration_number,
+    name: v.name,
+    model: v.model,
+    type: v.type,
+    maxLoad: Number(v.max_load),
+    currentOdometer: Number(v.current_odometer),
+    purchaseDate: v.purchase_date,
+    acquisitionCost: Number(v.acquisition_cost),
+    insuranceExpiry: v.insurance_expiry,
+    pollutionCert: v.pollution_cert,
+    imageUrl: v.image_url,
+    status: v.status,
+  };
+}
+
+function mapDriverToDB(d: any) {
+  return {
+    id: d.id,
+    name: d.name,
+    photo: d.photo,
+    license_number: d.licenseNumber,
+    license_category: d.licenseCategory,
+    license_expiry: d.license_expiry || d.licenseExpiryDate,
+    contact_number: d.contact_number || d.contactNumber,
+    email: d.email,
+    safety_score: d.safetyScore,
+    assigned_vehicle_id: d.assignedVehicleId,
+    status: d.status,
+  };
+}
+
+function mapDriverFromDB(d: any): Driver {
+  return {
+    id: d.id,
+    name: d.name,
+    photo: d.photo,
+    licenseNumber: d.license_number,
+    licenseCategory: d.license_category,
+    licenseExpiryDate: d.license_expiry,
+    contactNumber: d.contact_number,
+    email: d.email,
+    safetyScore: Number(d.safety_score),
+    assignedVehicleId: d.assigned_vehicle_id,
+    status: d.status,
+  };
+}
+
+function mapTripToDB(t: any) {
+  return {
+    id: t.id,
+    source: t.source,
+    destination: t.destination,
+    vehicle_id: t.vehicleId,
+    driver_id: t.driverId,
+    cargo_weight: t.cargoWeight,
+    planned_distance: t.plannedDistance,
+    estimated_duration: t.estimatedDuration,
+    status: t.status,
+    progress: t.progress,
+    start_time: t.startTime,
+    end_time: t.endTime,
+  };
+}
+
+function mapTripFromDB(t: any): Trip {
+  return {
+    id: t.id,
+    source: t.source,
+    destination: t.destination,
+    vehicleId: t.vehicle_id,
+    driverId: t.driver_id,
+    cargoWeight: Number(t.cargo_weight),
+    plannedDistance: Number(t.planned_distance),
+    estimatedDuration: Number(t.estimated_duration),
+    status: t.status,
+    progress: Number(t.progress),
+    startTime: t.start_time,
+    endTime: t.end_time,
+  };
+}
+
+function mapMaintenanceToDB(m: any) {
+  return {
+    id: m.id,
+    vehicle_id: m.vehicleId,
+    service_type: m.serviceType,
+    description: m.description,
+    mechanic: m.mechanic,
+    workshop: m.workshop,
+    estimated_cost: m.estimatedCost,
+    actual_cost: m.actualCost,
+    start_date: m.startDate,
+    end_date: m.endDate,
+    status: m.status,
+  };
+}
+
+function mapMaintenanceFromDB(m: any): MaintenanceLog {
+  return {
+    id: m.id,
+    vehicleId: m.vehicle_id,
+    serviceType: m.service_type,
+    description: m.description,
+    mechanic: m.mechanic,
+    workshop: m.workshop,
+    estimatedCost: Number(m.estimated_cost),
+    actualCost: m.actual_cost ? Number(m.actual_cost) : null,
+    startDate: m.start_date,
+    endDate: m.end_date,
+    status: m.status,
+  };
+}
+
+function mapFuelToDB(f: any) {
+  return {
+    id: f.id,
+    vehicle_id: f.vehicleId,
+    driver_id: f.driverId,
+    fuel_quantity: f.fuelQuantity,
+    fuel_cost: f.fuelCost,
+    fuel_station: f.fuelStation,
+    date: f.date,
+    odometer: f.odometer,
+  };
+}
+
+function mapFuelFromDB(f: any): FuelLog {
+  return {
+    id: f.id,
+    vehicleId: f.vehicle_id,
+    driverId: f.driver_id,
+    fuelQuantity: Number(f.fuel_quantity),
+    fuelCost: Number(f.fuel_cost),
+    fuelStation: f.fuel_station,
+    date: f.date,
+    odometer: Number(f.odometer),
+  };
+}
+
+function mapExpenseToDB(e: any) {
+  return {
+    id: e.id,
+    category: e.category,
+    description: e.description,
+    amount: e.amount,
+    date: e.date,
+    vehicle_id: e.vehicleId,
+    department: e.department,
+  };
+}
+
+function mapExpenseFromDB(e: any): Expense {
+  return {
+    id: e.id,
+    category: e.category,
+    description: e.description,
+    amount: Number(e.amount),
+    date: e.date,
+    vehicleId: e.vehicle_id,
+    department: e.department,
+  };
+}
+
+function mapDocumentToDB(d: any) {
+  return {
+    id: d.id,
+    entity_type: d.entityType,
+    entity_id: d.entityId,
+    name: d.name,
+    file_url: d.fileUrl,
+    expiry_date: d.expiryDate,
+    type: d.type,
+  };
+}
+
+function mapDocumentFromDB(d: any): Document {
+  return {
+    id: d.id,
+    entityType: d.entity_type,
+    entityId: d.entity_id,
+    name: d.name,
+    fileUrl: d.file_url,
+    expiryDate: d.expiry_date,
+    type: d.type,
+  };
+}
+
+function mapNotificationToDB(n: any) {
+  return {
+    id: n.id,
+    type: n.type,
+    message: n.message,
+    read: n.read,
+    created_at: n.date,
+  };
+}
+
+function mapNotificationFromDB(n: any): Notification {
+  return {
+    id: n.id,
+    type: n.type,
+    message: n.message,
+    read: n.read,
+    date: n.created_at,
+  };
+}
+
+function mapAuditToDB(a: any) {
+  return {
+    id: a.id,
+    user_email: a.userEmail,
+    action: a.action,
+    entity: a.entity,
+    timestamp: a.timestamp,
+  };
+}
+
+function mapAuditFromDB(a: any): AuditLog {
+  return {
+    id: a.id,
+    userEmail: a.user_email,
+    action: a.action,
+    entity: a.entity,
+    timestamp: a.timestamp,
+  };
+}
+
+async function supabaseSync(table: string, action: 'insert' | 'update' | 'delete', data: any, id?: string) {
+  if (!isSupabaseConfigured || !supabase) return;
+  try {
+    if (action === 'insert') {
+      const { error } = await supabase.from(table).insert(data);
+      if (error) console.error(`Supabase Insert error on ${table}:`, error);
+    } else if (action === 'update') {
+      const { error } = await supabase.from(table).update(data).eq('id', id);
+      if (error) console.error(`Supabase Update error on ${table}:`, error);
+    } else if (action === 'delete') {
+      const { error } = await supabase.from(table).delete().eq('id', id);
+      if (error) console.error(`Supabase Delete error on ${table}:`, error);
+    }
+  } catch (err) {
+    console.error(`Supabase Sync Exception [${table} - ${action}]:`, err);
+  }
+}
+
 // --- INTERACTION STORE INTERFACE ---
 
 interface TransitState {
@@ -549,6 +823,7 @@ interface TransitState {
   addVehicle: (vehicle: Omit<Vehicle, 'id'>) => { success: boolean; message: string };
   updateVehicle: (id: string, vehicle: Partial<Vehicle>) => { success: boolean; message: string };
   deleteVehicle: (id: string) => { success: boolean; message: string };
+  updateVehicleLocation: (id: string, lat: number, lng: number, heading: number, speed: number) => void;
 
   // Drivers Actions
   addDriver: (driver: Omit<Driver, 'id'>) => { success: boolean; message: string };
@@ -584,6 +859,9 @@ interface TransitState {
 
   // Audit Action
   logAction: (action: string, entity: string) => void;
+
+  // Sync Action
+  syncWithSupabase: () => Promise<void>;
 
   // Reset db
   resetStore: () => void;
@@ -648,14 +926,19 @@ export const useTransitStore = create<TransitState>()(
           return { success: false, message: `Vehicle Registration Number ${vehicle.registrationNumber} must be unique.` };
         }
 
+        const newId = crypto.randomUUID();
         const newVeh: Vehicle = {
           ...vehicle,
-          id: `veh-${Date.now()}`,
+          id: newId,
           status: vehicle.status || 'Available',
         };
 
         set((state) => ({ vehicles: [...state.vehicles, newVeh] }));
         get().logAction('Create Vehicle', `Added vehicle ${newVeh.registrationNumber} (${newVeh.name})`);
+        
+        // Async Supabase Sync
+        supabaseSync('vehicles', 'insert', mapVehicleToDB(newVeh));
+        
         return { success: true, message: 'Vehicle added successfully.' };
       },
 
@@ -674,7 +957,31 @@ export const useTransitStore = create<TransitState>()(
         }));
         const veh = get().vehicles.find((v) => v.id === id);
         get().logAction('Update Vehicle', `Updated vehicle ${veh?.registrationNumber}`);
+
+        // Async Supabase Sync
+        if (veh) {
+          supabaseSync('vehicles', 'update', mapVehicleToDB(veh), id);
+        }
+
         return { success: true, message: 'Vehicle updated successfully.' };
+      },
+
+      updateVehicleLocation: (id, lat, lng, heading, speed) => {
+        set((state) => ({
+          vehicles: state.vehicles.map((v) => 
+            v.id === id ? { ...v, gpsLocation: { lat, lng } } : v
+          ),
+        }));
+        // For telematics tracking events, push a new entry into vehicle_location_events table
+        supabaseSync('vehicle_location_events', 'insert', {
+          vehicle_id: id,
+          latitude: lat,
+          longitude: lng,
+          speed: speed,
+          heading: heading,
+          source: 'telematics',
+          recorded_at: new Date().toISOString()
+        });
       },
 
       deleteVehicle: (id) => {
@@ -692,6 +999,10 @@ export const useTransitStore = create<TransitState>()(
           drivers: state.drivers.map((d) => (d.assignedVehicleId === id ? { ...d, assignedVehicleId: null } : d)),
         }));
         get().logAction('Delete Vehicle', `Deleted vehicle ${veh.registrationNumber}`);
+
+        // Async Supabase Sync
+        supabaseSync('vehicles', 'delete', null, id);
+
         return { success: true, message: 'Vehicle deleted successfully.' };
       },
 
@@ -702,14 +1013,19 @@ export const useTransitStore = create<TransitState>()(
           return { success: false, message: `Driver with email ${driver.email} already exists.` };
         }
 
+        const newId = crypto.randomUUID();
         const newDrv: Driver = {
           ...driver,
-          id: `drv-${Date.now()}`,
+          id: newId,
           status: driver.status || 'Available',
         };
 
         set((state) => ({ drivers: [...state.drivers, newDrv] }));
         get().logAction('Create Driver', `Added driver ${newDrv.name}`);
+
+        // Async Supabase Sync
+        supabaseSync('drivers', 'insert', mapDriverToDB(newDrv));
+
         return { success: true, message: 'Driver added successfully.' };
       },
 
@@ -726,6 +1042,12 @@ export const useTransitStore = create<TransitState>()(
         }));
         const drv = get().drivers.find((d) => d.id === id);
         get().logAction('Update Driver', `Updated driver ${drv?.name}`);
+
+        // Async Supabase Sync
+        if (drv) {
+          supabaseSync('drivers', 'update', mapDriverToDB(drv), id);
+        }
+
         return { success: true, message: 'Driver updated successfully.' };
       },
 
@@ -743,6 +1065,10 @@ export const useTransitStore = create<TransitState>()(
           drivers: state.drivers.filter((d) => d.id !== id),
         }));
         get().logAction('Delete Driver', `Deleted driver ${drv.name}`);
+
+        // Async Supabase Sync
+        supabaseSync('drivers', 'delete', null, id);
+
         return { success: true, message: 'Driver deleted successfully.' };
       },
 
@@ -756,15 +1082,20 @@ export const useTransitStore = create<TransitState>()(
           }
         }
 
+        const newId = crypto.randomUUID();
         const newTrip: Trip = {
           ...trip,
-          id: `trip-${Date.now()}`,
+          id: newId,
           progress: 0,
           revenue: (trip.cargoWeight / 1000) * trip.plannedDistance * 0.20, // $0.20 per ton-km
         };
 
         set((state) => ({ trips: [...state.trips, newTrip] }));
         get().logAction('Create Trip', `Created draft trip from ${trip.source} to ${trip.destination}`);
+        
+        // Async Supabase Sync
+        supabaseSync('trips', 'insert', mapTripToDB(newTrip));
+
         return { success: true, message: 'Trip created in draft status.' };
       },
 
@@ -792,7 +1123,14 @@ export const useTransitStore = create<TransitState>()(
         set((state) => ({
           trips: state.trips.map((t) => (t.id === id ? { ...t, ...update, revenue } : t)),
         }));
+        const updatedTrip = get().trips.find((t) => t.id === id);
         get().logAction('Update Trip', `Updated trip details for trip-${id.split('-')[1]}`);
+        
+        // Async Supabase Sync
+        if (updatedTrip) {
+          supabaseSync('trips', 'update', mapTripToDB(updatedTrip), id);
+        }
+
         return { success: true, message: 'Trip updated successfully.' };
       },
 
@@ -842,17 +1180,29 @@ export const useTransitStore = create<TransitState>()(
           return { success: false, message: `Cargo weight (${trip.cargoWeight} kg) exceeds vehicle maximum capacity (${vehicle.maxLoad} kg).` };
         }
 
+        const dispatchTime = new Date().toISOString();
+
         // Dispatch status update
         // Rule: Dispatching a trip automatically changes: Vehicle -> On Trip, Driver -> On Trip
         set((state) => ({
           trips: state.trips.map((t) =>
-            t.id === id ? { ...t, status: 'Dispatched', progress: 5, startTime: new Date().toISOString() } : t
+            t.id === id ? { ...t, status: 'Dispatched', progress: 5, startTime: dispatchTime } : t
           ),
           vehicles: state.vehicles.map((v) => (v.id === trip.vehicleId ? { ...v, status: 'On Trip' } : v)),
           drivers: state.drivers.map((d) => (d.id === trip.driverId ? { ...d, status: 'On Trip' } : d)),
         }));
 
         get().logAction('Dispatch Trip', `Dispatched trip-${id.split('-')[1]} with vehicle ${vehicle.registrationNumber} & driver ${driver.name}`);
+
+        // Async Supabase Sync for Trip, Vehicle, and Driver statuses
+        const updatedTrip = get().trips.find((t) => t.id === id);
+        const updatedVehicle = get().vehicles.find((v) => v.id === trip.vehicleId);
+        const updatedDriver = get().drivers.find((d) => d.id === trip.driverId);
+
+        if (updatedTrip) supabaseSync('trips', 'update', mapTripToDB(updatedTrip), id);
+        if (updatedVehicle) supabaseSync('vehicles', 'update', mapVehicleToDB(updatedVehicle), trip.vehicleId || undefined);
+        if (updatedDriver) supabaseSync('drivers', 'update', mapDriverToDB(updatedDriver), trip.driverId || undefined);
+
         return { success: true, message: 'Trip successfully dispatched!' };
       },
 
@@ -860,11 +1210,13 @@ export const useTransitStore = create<TransitState>()(
         const trip = get().trips.find((t) => t.id === id);
         if (!trip) return { success: false, message: 'Trip not found.' };
 
+        const endTime = new Date().toISOString();
+
         // Rule: Completing a trip automatically changes: Vehicle -> Available, Driver -> Available
         // And we add trip distance to vehicle odometer
         set((state) => ({
           trips: state.trips.map((t) =>
-            t.id === id ? { ...t, status: 'Completed', progress: 100, endTime: new Date().toISOString() } : t
+            t.id === id ? { ...t, status: 'Completed', progress: 100, endTime: endTime } : t
           ),
           vehicles: state.vehicles.map((v) => {
             if (v.id === trip.vehicleId) {
@@ -884,10 +1236,11 @@ export const useTransitStore = create<TransitState>()(
         const driver = get().drivers.find((d) => d.id === trip.driverId);
         get().logAction('Complete Trip', `Completed trip-${id.split('-')[1]}. Vehicle odometer updated to ${vehicle ? Number(vehicle.currentOdometer) + Number(trip.plannedDistance) : ''} km.`);
 
-        // Log completed trip as revenue expense
-        if (trip.revenue) {
-          // Increment revenue in analytics (implicitly)
-        }
+        // Async Supabase Sync
+        const updatedTrip = get().trips.find((t) => t.id === id);
+        if (updatedTrip) supabaseSync('trips', 'update', mapTripToDB(updatedTrip), id);
+        if (vehicle) supabaseSync('vehicles', 'update', mapVehicleToDB(vehicle), trip.vehicleId || undefined);
+        if (driver) supabaseSync('drivers', 'update', mapDriverToDB(driver), trip.driverId || undefined);
 
         return { success: true, message: 'Trip completed successfully.' };
       },
@@ -910,6 +1263,16 @@ export const useTransitStore = create<TransitState>()(
         }));
 
         get().logAction('Cancel Trip', `Cancelled trip-${id.split('-')[1]} (was dispatched: ${wasDispatched})`);
+
+        // Async Supabase Sync
+        const updatedTrip = get().trips.find((t) => t.id === id);
+        const vehicle = get().vehicles.find((v) => v.id === trip.vehicleId);
+        const driver = get().drivers.find((d) => d.id === trip.driverId);
+
+        if (updatedTrip) supabaseSync('trips', 'update', mapTripToDB(updatedTrip), id);
+        if (vehicle && wasDispatched) supabaseSync('vehicles', 'update', mapVehicleToDB(vehicle), trip.vehicleId || undefined);
+        if (driver && wasDispatched) supabaseSync('drivers', 'update', mapDriverToDB(driver), trip.driverId || undefined);
+
         return { success: true, message: 'Trip cancelled successfully.' };
       },
 
@@ -924,14 +1287,19 @@ export const useTransitStore = create<TransitState>()(
           trips: state.trips.filter((t) => t.id !== id),
         }));
         get().logAction('Delete Trip', `Deleted trip-${id.split('-')[1]}`);
+        
+        // Async Supabase Sync
+        supabaseSync('trips', 'delete', null, id);
+
         return { success: true, message: 'Trip deleted.' };
       },
 
       // Maintenance Logs
       addMaintenanceLog: (log) => {
+        const newId = crypto.randomUUID();
         const newLog: MaintenanceLog = {
           ...log,
-          id: `maint-${Date.now()}`,
+          id: newId,
           actualCost: log.actualCost || null,
         };
 
@@ -962,6 +1330,10 @@ export const useTransitStore = create<TransitState>()(
           department: 'Operations',
         });
 
+        // Async Supabase Sync
+        supabaseSync('maintenance_logs', 'insert', mapMaintenanceToDB(newLog));
+        if (vehicle) supabaseSync('vehicles', 'update', mapVehicleToDB({ ...vehicle, status: 'In Shop' }), log.vehicleId);
+
         return { success: true, message: 'Maintenance record created.' };
       },
 
@@ -984,6 +1356,9 @@ export const useTransitStore = create<TransitState>()(
               vehicles: state.vehicles.map((v) => (v.id === log.vehicleId ? { ...v, status: nextStatus } : v)),
             }));
             get().logAction('Complete Maintenance', `Completed maintenance for ${vehicle.registrationNumber}. Status set to ${nextStatus}.`);
+            
+            // Sync vehicle status update
+            supabaseSync('vehicles', 'update', mapVehicleToDB({ ...vehicle, status: nextStatus }), log.vehicleId);
           }
 
           // If actual cost is logged, update or create expenses discrepancy
@@ -999,14 +1374,20 @@ export const useTransitStore = create<TransitState>()(
           }
         }
 
+        // Async Supabase Sync
+        if (updatedLog) {
+          supabaseSync('maintenance_logs', 'update', mapMaintenanceToDB(updatedLog), id);
+        }
+
         return { success: true, message: 'Maintenance record updated successfully.' };
       },
 
       // Fuel Logs
       addFuelLog: (log) => {
+        const newId = crypto.randomUUID();
         const newLog: FuelLog = {
           ...log,
-          id: `fuel-${Date.now()}`,
+          id: newId,
         };
 
         // Automate odometer update: if logged fuel odometer is greater than vehicle's current odometer, update it.
@@ -1018,6 +1399,9 @@ export const useTransitStore = create<TransitState>()(
             ),
           }));
           get().logAction('Odometer Autoupdate', `Updated odometer for ${vehicle.registrationNumber} to ${log.odometer} km via Fuel Log.`);
+          
+          // Sync vehicle odometer update
+          supabaseSync('vehicles', 'update', mapVehicleToDB({ ...vehicle, currentOdometer: log.odometer }), log.vehicleId);
         }
 
         set((state) => ({
@@ -1035,26 +1419,36 @@ export const useTransitStore = create<TransitState>()(
         });
 
         get().logAction('Log Fuel Refill', `Added fuel log of $${log.fuelCost} for vehicle ${vehicle?.registrationNumber || ''}`);
+
+        // Async Supabase Sync
+        supabaseSync('fuel_logs', 'insert', mapFuelToDB(newLog));
+
         return { success: true, message: 'Fuel log and associated expense recorded successfully.' };
       },
 
       // Expenses
       addExpense: (expense) => {
+        const newId = crypto.randomUUID();
         const newExpense: Expense = {
           ...expense,
-          id: `exp-${Date.now()}`,
+          id: newId,
         };
         set((state) => ({
           expenses: [...state.expenses, newExpense],
         }));
+
+        // Async Supabase Sync
+        supabaseSync('expenses', 'insert', mapExpenseToDB(newExpense));
+
         return { success: true, message: 'Expense recorded.' };
       },
 
       // Documents
       addDocument: (doc) => {
+        const newId = crypto.randomUUID();
         const newDoc: Document = {
           ...doc,
-          id: `doc-${Date.now()}`,
+          id: newId,
         };
         set((state) => ({
           documents: [...state.documents, newDoc],
@@ -1081,6 +1475,10 @@ export const useTransitStore = create<TransitState>()(
         }
 
         get().logAction('Add Document', `Uploaded document "${doc.name}"`);
+
+        // Async Supabase Sync
+        supabaseSync('documents', 'insert', mapDocumentToDB(newDoc));
+
         return { success: true, message: 'Document added.' };
       },
 
@@ -1092,13 +1490,18 @@ export const useTransitStore = create<TransitState>()(
           documents: state.documents.filter((d) => d.id !== id),
         }));
         get().logAction('Delete Document', `Deleted document "${doc.name}"`);
+
+        // Async Supabase Sync
+        supabaseSync('documents', 'delete', null, id);
+
         return { success: true, message: 'Document deleted successfully.' };
       },
 
       // Notifications
       addNotification: (type, message) => {
+        const newId = crypto.randomUUID();
         const newNotif: Notification = {
-          id: `not-${Date.now()}`,
+          id: newId,
           type,
           message,
           read: false,
@@ -1107,23 +1510,38 @@ export const useTransitStore = create<TransitState>()(
         set((state) => ({
           notifications: [newNotif, ...state.notifications],
         }));
+
+        // Async Supabase Sync
+        supabaseSync('notifications', 'insert', mapNotificationToDB(newNotif));
       },
 
       markNotificationRead: (id) => {
         set((state) => ({
           notifications: state.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
         }));
+
+        // Async Supabase Sync
+        const notif = get().notifications.find((n) => n.id === id);
+        if (notif) {
+          supabaseSync('notifications', 'update', mapNotificationToDB(notif), id);
+        }
       },
 
       markAllNotificationsRead: () => {
         set((state) => ({
           notifications: state.notifications.map((n) => ({ ...n, read: true })),
         }));
+
+        // Async Supabase Sync
+        get().notifications.forEach((n) => {
+          supabaseSync('notifications', 'update', mapNotificationToDB(n), n.id);
+        });
       },
 
       logAction: (action, entity) => {
+        const newId = crypto.randomUUID();
         const newLog: AuditLog = {
-          id: `aud-${Date.now()}`,
+          id: newId,
           userEmail: get().currentUser?.email || 'system@transitops.com',
           action,
           entity,
@@ -1132,6 +1550,9 @@ export const useTransitStore = create<TransitState>()(
         set((state) => ({
           auditLogs: [newLog, ...state.auditLogs],
         }));
+
+        // Async Supabase Sync
+        supabaseSync('audit_logs', 'insert', mapAuditToDB(newLog));
       },
 
       resetStore: () => {
@@ -1154,6 +1575,47 @@ export const useTransitStore = create<TransitState>()(
             },
           ],
         });
+      },
+
+      syncWithSupabase: async () => {
+        if (!isSupabaseConfigured || !supabase) return;
+        try {
+          const [
+            { data: dbVehicles },
+            { data: dbDrivers },
+            { data: dbTrips },
+            { data: dbMaint },
+            { data: dbFuel },
+            { data: dbExpenses },
+            { data: dbDocs },
+            { data: dbNotifs },
+            { data: dbAudits }
+          ] = await Promise.all([
+            supabase.from('vehicles').select('*'),
+            supabase.from('drivers').select('*'),
+            supabase.from('trips').select('*'),
+            supabase.from('maintenance_logs').select('*'),
+            supabase.from('fuel_logs').select('*'),
+            supabase.from('expenses').select('*'),
+            supabase.from('documents').select('*'),
+            supabase.from('notifications').select('*'),
+            supabase.from('audit_logs').select('*').order('timestamp', { ascending: false })
+          ]);
+
+          set({
+            vehicles: dbVehicles ? dbVehicles.map(mapVehicleFromDB) : [],
+            drivers: dbDrivers ? dbDrivers.map(mapDriverFromDB) : [],
+            trips: dbTrips ? dbTrips.map(mapTripFromDB) : [],
+            maintenanceLogs: dbMaint ? dbMaint.map(mapMaintenanceFromDB) : [],
+            fuelLogs: dbFuel ? dbFuel.map(mapFuelFromDB) : [],
+            expenses: dbExpenses ? dbExpenses.map(mapExpenseFromDB) : [],
+            documents: dbDocs ? dbDocs.map(mapDocumentFromDB) : [],
+            notifications: dbNotifs ? dbNotifs.map(mapNotificationFromDB) : [],
+            auditLogs: dbAudits ? dbAudits.map(mapAuditFromDB) : [],
+          });
+        } catch (err) {
+          console.error('Failed to sync with Supabase:', err);
+        }
       },
     }),
     {

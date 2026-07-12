@@ -19,7 +19,8 @@ import {
   LogOut,
   Lock,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Navigation
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -32,6 +33,7 @@ interface SidebarItem {
 
 const SIDEBAR_ITEMS: SidebarItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, allowedRoles: ['Administrator', 'Fleet Manager', 'Dispatcher', 'Safety Officer', 'Financial Analyst'] },
+  { name: 'Fleet Tracking', href: '/tracking', icon: Navigation, allowedRoles: ['Administrator', 'Fleet Manager', 'Dispatcher', 'Safety Officer'] },
   { name: 'Vehicles', href: '/vehicles', icon: Truck, allowedRoles: ['Administrator', 'Fleet Manager', 'Dispatcher', 'Safety Officer'] },
   { name: 'Drivers', href: '/drivers', icon: Users, allowedRoles: ['Administrator', 'Fleet Manager', 'Dispatcher', 'Safety Officer'] },
   { name: 'Trips', href: '/trips', icon: Map, allowedRoles: ['Administrator', 'Fleet Manager', 'Dispatcher'] },

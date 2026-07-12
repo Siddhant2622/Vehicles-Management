@@ -1214,7 +1214,14 @@ export const useTransitStore = create<TransitState>()(
               await signInWithEmailAndPassword(auth, email, password);
             } catch (err: any) {
               if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/cannot-find-user') {
-                await createUserWithEmailAndPassword(auth, email, password);
+                try {
+                  await createUserWithEmailAndPassword(auth, email, password);
+                } catch (createErr: any) {
+                  if (createErr.code === 'auth/email-already-in-use') {
+                    throw new Error('Invalid credentials. This email is already registered, please verify your password.');
+                  }
+                  throw createErr;
+                }
               } else {
                 throw err;
               }
@@ -1222,6 +1229,20 @@ export const useTransitStore = create<TransitState>()(
           }
 
           let user = get().users.find((u) => u.email.toLowerCase() === email.toLowerCase().trim());
+          if (!user) {
+            // Check Supabase in case the user exists in the DB but not yet synced locally
+            if (isSupabaseConfigured && supabase) {
+              const { data: dbUser, error } = await supabase.from('users').select('*').eq('email', email.toLowerCase().trim()).single();
+              if (error && error.code !== 'PGRST116') {
+                console.error('Supabase fetch user error:', error);
+              }
+              if (dbUser) {
+                user = mapUserFromDB(dbUser);
+                set((state) => ({ users: [...state.users, user!] }));
+              }
+            }
+          }
+
           if (!user) {
             user = {
               id: generateUUID(),

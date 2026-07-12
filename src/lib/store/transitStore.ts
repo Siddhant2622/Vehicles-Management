@@ -1000,6 +1000,7 @@ interface TransitState {
   loginWithEmail: (email: string, role: UserRole, password?: string) => Promise<boolean>;
   loginWithGoogle: (role: UserRole) => Promise<boolean>;
   registerRequest: (user: Omit<User, 'id' | 'approvalStatus'>, password?: string) => Promise<{ success: boolean; message: string }>;
+  addEmployee: (employeeDetails: Omit<User, 'id' | 'approvalStatus' | 'companyId' | 'lastStatusChange'>) => Promise<{ success: boolean; message: string }>;
   approveUserRequest: (userId: string, adminId: string, notes?: string) => Promise<{ success: boolean; message: string }>;
   rejectUserRequest: (userId: string, adminId: string, reason: string) => Promise<{ success: boolean; message: string }>;
   requestMoreInfo: (userId: string, adminId: string, fields: string[], notes: string) => Promise<{ success: boolean; message: string }>;
@@ -1380,6 +1381,44 @@ export const useTransitStore = create<TransitState>()(
           console.error('Registration request error:', err);
           set({ authLoading: false });
           return { success: false, message: err?.message || 'Failed to submit registration request.' };
+        }
+      },
+
+      addEmployee: async (employeeDetails) => {
+        set({ authLoading: true });
+        try {
+          const newUserId = generateUUID();
+          const currentCompanyId = get().currentUser?.companyId;
+
+          if (!currentCompanyId) {
+            throw new Error("You must be logged in as an Administrator associated with a company to add employees.");
+          }
+
+          const newEmployee: User = {
+            ...employeeDetails,
+            id: newUserId,
+            companyId: currentCompanyId,
+            approvalStatus: 'Approved',
+            lastStatusChange: new Date().toISOString()
+          };
+
+          // Save locally in Zustand
+          set((state) => ({ users: [...state.users, newEmployee] }));
+
+          // Save to Supabase (RLS is disabled by fix_rls.sql, so it bypasses RLS)
+          if (isSupabaseConfigured && supabase) {
+            const { error: userError } = await supabase.from('users').insert(mapUserToDB(newEmployee));
+            if (userError) throw new Error(`Failed to create user record in database: ${userError.message}`);
+          }
+
+          get().logAction('Add Employee Directly', `Administrator added employee ${newEmployee.email} as ${newEmployee.role}`);
+
+          set({ authLoading: false });
+          return { success: true, message: 'Employee added successfully.' };
+        } catch (err: any) {
+          console.error('Add employee error:', err);
+          set({ authLoading: false });
+          return { success: false, message: err?.message || 'Failed to add employee.' };
         }
       },
 

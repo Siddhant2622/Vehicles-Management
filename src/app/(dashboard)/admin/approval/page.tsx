@@ -6,7 +6,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { 
   Users, CheckCircle2, XCircle, AlertTriangle, UserCheck, 
   Search, Filter, ShieldCheck, Mail, Phone, Eye, BadgeAlert, Clock,
-  Check, X, RefreshCw, FileQuestion, HelpCircle, FileText
+  Check, X, RefreshCw, FileQuestion, HelpCircle, FileText, UserPlus
 } from 'lucide-react';
 
 export default function UserApprovalCenter() {
@@ -18,7 +18,8 @@ export default function UserApprovalCenter() {
     rejectUserRequest, 
     requestMoreInfo,
     suspendUser,
-    reactivateUser
+    reactivateUser,
+    addEmployee
   } = useTransitStore();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,6 +35,21 @@ export default function UserApprovalCenter() {
   const [infoRequestNotes, setInfoRequestNotes] = useState('');
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [infoFields, setInfoFields] = useState<string[]>([]);
+
+  // Add Employee Form States
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addFirstName, setAddFirstName] = useState('');
+  const [addLastName, setAddLastName] = useState('');
+  const [addEmail, setAddEmail] = useState('');
+  const [addRole, setAddRole] = useState<UserRole>('Fleet Manager');
+  const [addDepartment, setAddDepartment] = useState('Operations');
+  const [addDesignation, setAddDesignation] = useState('Fleet Operator');
+  const [addEmployeeId, setAddEmployeeId] = useState('');
+  const [addPhoneNumber, setAddPhoneNumber] = useState('');
+  const [addProfilePhoto, setAddProfilePhoto] = useState('');
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addSuccess, setAddSuccess] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!currentUser || currentUser.role !== 'Administrator') {
     return (
@@ -124,6 +140,54 @@ export default function UserApprovalCenter() {
     );
   };
 
+  const handleAddEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addFirstName.trim() || !addLastName.trim() || !addEmail.trim() || !addDepartment.trim() || !addDesignation.trim()) {
+      setAddError('All required fields must be filled.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setAddError(null);
+    setAddSuccess(null);
+
+    const payload = {
+      email: addEmail.trim(),
+      fullName: `${addFirstName.trim()} ${addLastName.trim()}`,
+      role: addRole,
+      firstName: addFirstName.trim(),
+      lastName: addLastName.trim(),
+      department: addDepartment.trim(),
+      designation: addDesignation.trim(),
+      employeeId: addEmployeeId.trim() || undefined,
+      phoneNumber: addPhoneNumber.trim() || undefined,
+      profilePhoto: addProfilePhoto.trim() || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=250',
+    };
+
+    const res = await addEmployee(payload);
+    setIsSubmitting(false);
+
+    if (res.success) {
+      setAddSuccess('Employee added successfully! They can now log in.');
+      // Reset form
+      setAddFirstName('');
+      setAddLastName('');
+      setAddEmail('');
+      setAddRole('Fleet Manager');
+      setAddDepartment('Operations');
+      setAddDesignation('Fleet Operator');
+      setAddEmployeeId('');
+      setAddPhoneNumber('');
+      setAddProfilePhoto('');
+      setTimeout(() => {
+        setIsAddModalOpen(false);
+        setAddSuccess(null);
+      }, 1500);
+    } else {
+      setAddError(res.message || 'Failed to add employee.');
+    }
+  };
+
   return (
     <ProtectedRoute allowedRoles={['Administrator']}>
       <div className="space-y-6">
@@ -134,6 +198,17 @@ export default function UserApprovalCenter() {
             <h1 className="text-2xl font-bold tracking-tight">Access Clearance & User Approvals</h1>
             <p className="text-slate-500 text-sm">Review, authorize, suspend, or reject TransitOps console access requests.</p>
           </div>
+          <button
+            onClick={() => {
+              setAddError(null);
+              setAddSuccess(null);
+              setIsAddModalOpen(true);
+            }}
+            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold rounded-xl text-xs flex items-center gap-2 transition-all shadow-md shadow-indigo-600/10 cursor-pointer shrink-0"
+          >
+            <UserPlus size={14} />
+            Add Employee
+          </button>
         </div>
 
         {/* Metrics Row */}
@@ -635,6 +710,169 @@ export default function UserApprovalCenter() {
                   Send Request
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+        {/* Modal: Add Employee */}
+        {isAddModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <UserPlus className="text-indigo-600" size={20} /> Add New Employee
+                </h3>
+                <button
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {addError && (
+                <div className="p-3 bg-red-50 text-red-600 text-xs rounded-xl border border-red-100">
+                  {addError}
+                </div>
+              )}
+              {addSuccess && (
+                <div className="p-3 bg-green-50 text-green-600 text-xs rounded-xl border border-green-100">
+                  {addSuccess}
+                </div>
+              )}
+
+              <form onSubmit={handleAddEmployee} className="space-y-4 text-xs">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">First Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={addFirstName}
+                      onChange={(e) => setAddFirstName(e.target.value)}
+                      placeholder="John"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Last Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={addLastName}
+                      onChange={(e) => setAddLastName(e.target.value)}
+                      placeholder="Smith"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Enterprise Email *</label>
+                  <input
+                    type="email"
+                    required
+                    value={addEmail}
+                    onChange={(e) => setAddEmail(e.target.value)}
+                    placeholder="email@company.com"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Clearance Role *</label>
+                    <select
+                      value={addRole}
+                      onChange={(e) => setAddRole(e.target.value as UserRole)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs"
+                    >
+                      <option value="Fleet Manager">Fleet Manager</option>
+                      <option value="Dispatcher">Dispatcher</option>
+                      <option value="Safety Officer">Safety Officer</option>
+                      <option value="Financial Analyst">Financial Analyst</option>
+                      <option value="Maintenance Manager">Maintenance Manager</option>
+                      <option value="Driver">Driver</option>
+                      <option value="Viewer">Viewer</option>
+                      <option value="Security">Security</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Employee ID (Optional)</label>
+                    <input
+                      type="text"
+                      value={addEmployeeId}
+                      onChange={(e) => setAddEmployeeId(e.target.value)}
+                      placeholder="EMP-100"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Department *</label>
+                    <input
+                      type="text"
+                      required
+                      value={addDepartment}
+                      onChange={(e) => setAddDepartment(e.target.value)}
+                      placeholder="Operations"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Designation *</label>
+                    <input
+                      type="text"
+                      required
+                      value={addDesignation}
+                      onChange={(e) => setAddDesignation(e.target.value)}
+                      placeholder="Fleet Operator"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phone Number</label>
+                    <input
+                      type="text"
+                      value={addPhoneNumber}
+                      onChange={(e) => setAddPhoneNumber(e.target.value)}
+                      placeholder="+1 (555) 0199"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Profile Photo URL</label>
+                    <input
+                      type="text"
+                      value={addProfilePhoto}
+                      onChange={(e) => setAddProfilePhoto(e.target.value)}
+                      placeholder="https://example.com/photo.jpg"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-550 text-white font-semibold rounded-lg disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {isSubmitting ? 'Adding Employee...' : 'Save Employee'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

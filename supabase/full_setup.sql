@@ -1,0 +1,1 @@
+c:\Users\bipin\AppData\Local\Packages\5319275A.WhatsAppDesktop_cv1g1gvanyjgm\LocalState\sessions\B33AA538B5E2722E3C21DAAC55C0C20C70C6E0DC\transfers\2026-28\WhatsApp Image 2026-07-12 at 15.45.42.jpeg

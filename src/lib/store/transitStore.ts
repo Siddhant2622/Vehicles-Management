@@ -1147,7 +1147,8 @@ export const useTransitStore = create<TransitState>()(
           }));
 
           if (isSupabaseConfigured && supabase) {
-            await supabase.from('users').insert(mapUserToDB(adminUser));
+            const { error: userError } = await supabase.from('users').insert(mapUserToDB(adminUser));
+            if (userError) throw new Error(`Failed to create admin user in database: ${userError.message}`);
           }
 
           get().logAction('Company Registration', `New company "${companyName}" registered by admin ${adminPayload.email}`);
@@ -1270,7 +1271,7 @@ export const useTransitStore = create<TransitState>()(
             const result = await signInWithPopup(auth, googleProvider);
             email = result.user.email || '';
           } else {
-            email = 'google-user@transitops.com';
+            email = window.prompt("Firebase is not configured. Enter your email to simulate Google Login:", "google-user@transitops.com") || '';
           }
 
           if (!email) {
@@ -1282,7 +1283,10 @@ export const useTransitStore = create<TransitState>()(
           if (!user) {
             // Also check Supabase in case the user exists in the DB but not yet synced locally
             if (isSupabaseConfigured && supabase) {
-              const { data: dbUser } = await supabase.from('users').select('*').eq('email', email.toLowerCase().trim()).single();
+              const { data: dbUser, error } = await supabase.from('users').select('*').eq('email', email.toLowerCase().trim()).single();
+              if (error && error.code !== 'PGRST116') {
+                console.error('Supabase fetch user error:', error);
+              }
               if (dbUser) {
                 user = mapUserFromDB(dbUser);
                 set((state) => ({ users: [...state.users, user!] }));
@@ -1341,7 +1345,8 @@ export const useTransitStore = create<TransitState>()(
 
           set((state) => ({ users: [...state.users, newUser] }));
           if (isSupabaseConfigured && supabase) {
-            await supabase.from('users').insert(mapUserToDB(newUser));
+            const { error: userError } = await supabase.from('users').insert(mapUserToDB(newUser));
+            if (userError) throw new Error(`Failed to submit registration to database: ${userError.message}`);
           }
 
           // Trigger local in-app notification for Admins
